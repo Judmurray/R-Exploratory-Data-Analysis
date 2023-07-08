@@ -1,2 +1,2 @@
 # R-Statistical-Analysis-Projects
-This Repo contains projects from my undergrad coursework, although  completed in school I feel the skills utilized in these projects are notable. 
+This project was an Exploratory Data Analysis project exploring the prospect of using Multinomial Logistic Regression to classify Spotify song data. 
