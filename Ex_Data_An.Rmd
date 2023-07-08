@@ -1,0 +1,128 @@
+---
+title: "Exploratory Data Analysis"
+author: "Judson Murray"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+```{r}
+movie = read.csv("movie.csv", stringsAsFactors = T, na.strings = 'Not Available')
+
+head(movie)
+
+movie = na.omit(movie)
+
+summary(movie)
+
+
+
+movie_new <- movie[!is.na(as.numeric(movie$budget)), ]
+
+budg_samp = movie$budget[1:25]
+# budg_samp = log(budg_samp)
+rank_samp = movie$rank[1:25]
+
+
+
+
+
+```
+
+
+```{r}
+
+movie = na.omit(movie)
+# rate_new = movie$rank[which(movie$rating > 7.5)]
+# rate_samp = rate_new[1:200]
+rate_samp = movie$rating[1:200]
+rank_samp = movie$rank[1:200]
+length(rank_samp)
+
+
+# budget = na.omit(movie$budget)
+budget_samp = movie$budget[1:200]
+budget_samp = as.numeric(budget_samp)
+budg = log(budget_samp)
+
+# rating = na.omit(movie$rating)
+# run_time = movie$run_time[1:200]
+# run_time = as.numeric(run_time)
+# run_time = na.omit(movie$run_time)
+
+library(lubridate)
+library(dplyr)
+run_time = (movie$run_time[1:200] %>% toupper %>% period %>% period_to_seconds())/60
+length(run_time)
+# rt_samp = run_time[1:200]
+# rt_samp
+
+# box_office = na.omit(movie$box_office)
+b_o_samp = movie$box_office[1:200]
+typeof(b_o_samp)
+b_o_samp = as.numeric(b_o_samp)
+b_o = log(b_o_samp)
+length(b_o)
+
+# year = na.omit(movie$year)
+year_samp = year[1:200]
+year_samp
+
+
+
+mdl = lm(rank_samp ~ rate_samp*run_time)
+summary(mdl)
+
+plot(mdl$fitted.values,rstudent(mdl), pch = 16,
+     main = 'Residuals vs. Fitted Values')
+
+plot(run_time, rank_samp)
+
+# making dummy variables for: adventure, action, drama, comedy, horror
+# these variables chosen from surveying several lists of most popular 
+# movie genres as well as what we would expect to be popular
+
+# https://www.statista.com/statistics/188658/movie-genres-in-north-america-by-box-office-revenue-since-1995/
+# http://www.filmblerg.com/2021/09/30/5-most-popular-movie-genres-of-2021/
+# https://www.thetoptens.com/movies/best-movie-genres/
+
+movie_samp = movie[1:200,]
+as.character(movie_samp$genre)
+
+
+horror = ifelse(movie_samp$genre == 'Horror', 1, 0)
+action = ifelse(movie_samp$genre == 'Action', 1, 0)
+advent = ifelse(movie_samp$genre == 'Adventure', 1, 0)
+drama = ifelse(movie_samp$genre == 'Drama', 1, 0)
+comedy = ifelse(movie_samp$genre == 'Comedy', 1, 0)
+
+mdl_rating = lm(rank_samp ~ rt_samp*rate_samp + budget_samp*b_o_samp)
+summary(mdl_rating)
+
+par(mfrow = c(1,2))
+
+plot(mdl_rating$fitted.values,rstudent(mdl_rating), pch = 16,
+     main = 'Residuals vs. Fitted Values', xlab = 'Fitted Values for Model 2', ylab = 'Studenstized Residuals for Model 2')
+
+qqnorm(rstudent(mdl_rating), main = 'Normal Q-Q Plot for Model 2')
+abline(0,1,col = 'red')
+
+library(leaps)
+library(MASS)
+
+step = stepAIC(mdl, Trace = T, k = log(200), direction = "backward", scope = formula(mdl))
+
+
+# from these results, rank only influenced by rating, and rating influenced by 
+# run time? so why isn't rank influenced by run time?? 
+
+
+
+```

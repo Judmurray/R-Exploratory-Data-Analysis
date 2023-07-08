@@ -1,0 +1,53 @@
+---
+title: "FinalProj"
+author: "Judson Murray"
+date: "2023-04-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Upload Data
+
+```{r cars}
+# setwd("~/Desktop/Adv Method Regression/Final Project/")
+
+spot <- read.csv("genres_v2.csv")
+```
+
+## Analyzing Data
+
+```{r}
+spot = spot[!duplicated(spot$id), ]
+
+genres = cbind(spot[,1:11],spot[,17:19])
+genres = genres[,-13]
+
+genres$genre[genres$genre == "techno"] = "EDM"
+genres$genre[genres$genre == "techhouse"] = "EDM"
+genres$genre[genres$genre == "Trap"] = "Trap"
+genres$genre[genres$genre == "Dark Trap"] = "Trap"
+genres$genre[genres$genre == "dnb"] = "EDM"
+genres$genre[genres$genre == "Hiphop"] = "Rap"
+genres$genre[genres$genre == "Underground Rap"] = "Rap"
+genres$genre[genres$genre == "hardstyle"] = "EDM"
+genres$genre[genres$genre == "trance"] = "EDM"
+genres$genre[genres$genre == "psytrance"] = "EDM"
+genres$genre[genres$genre == "Pop"] = "Rap"
+genres$genre[genres$genre == "Trap Metal"] = "Trap"
+
+genres$genre = as.factor(genres$genre)
+
+genres$genre=relevel(genres$genre, ref="EDM")
+
+
+set.seed(123)
+index = sample(1:nrow(genres), round(nrow(genres) * 0.7))
+
+train_genre = genres[index, ]
+test_genre = genres[-index, ]
+
+```
+

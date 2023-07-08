@@ -1,0 +1,209 @@
+---
+title: "Project work pt 2"
+author: "Judson Murray"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+# NEW.GENRES IS THE FINAL FILE!!! 
+
+
+spot = read.csv("genres_v2.csv", stringsAsFactors = T)
+
+summary(spot)
+
+# Approach #1:
+plot(spot[,1:22])
+# Approach #2: 
+
+# res = cor(spot[,1:11])
+library(corrplot)
+# corrplot(res, type = "upper", order = "hclust", 
+       #   tl.col = "black", tl.srt = 45)
+
+spot1 = spot[,-c(21:22)]
+spot2 = spot1[,-c(12:16)]
+
+res2 = cor(spot2[,-c(14:15)])
+corrplot(res2, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+
+
+```
+
+
+```{r}
+
+# code may not work 
+
+spot <- read.csv("genres_v2.csv", stringsAsFactors = T)
+spot = spot[!duplicated(spot$id), ]
+
+genres = cbind(spot[,1:11],spot[,17:19])
+genres = genres[,-13]
+
+genres$genre[genres$genre == "techno"] = "EDM"
+genres$genre[genres$genre == "techhouse"] = "EDM"
+genres$genre[genres$genre == "Trap"] = "Trap"
+genres$genre[genres$genre == "Dark Trap"] = "Trap"
+genres$genre[genres$genre == "dnb"] = "EDM"
+genres$genre[genres$genre == "Hiphop"] = "Rap"
+genres$genre[genres$genre == "Underground Rap"] = "Rap"
+genres$genre[genres$genre == "hardstyle"] = "EDM"
+genres$genre[genres$genre == "trance"] = "EDM"
+genres$genre[genres$genre == "psytrance"] = "EDM"
+genres$genre[genres$genre == "Pop"] = "Rap"
+genres$genre[genres$genre == "Trap Metal"] = "Trap"
+
+genres$genre = as.factor(genres$genre)
+
+mean_dance = mean(genres$danceability)
+
+nrow(genres)
+
+```
+
+
+```{r}
+
+model_1 = lm(valence ~ ., data = genres)
+summary(model_1)
+
+library(MASS)
+
+reg_null = lm(valence ~ 1, data = genres)
+
+stepAIC(model_1, Trace = T, k = log(nrow(genres)), direction = "backward", scope = formula(reg_null))
+
+summary(step)
+
+
+
+
+```
+
+
+
+
+```{r}
+
+library(dplyr)       # for data wrangling
+library(ggplot2)     # for awesome plotting
+
+# Modeling packages
+library(rpart)       # direct engine for decision tree application
+library(caret)       # meta engine for decision tree application
+
+# Model interpretability packages
+library(rpart.plot)  # for plotting decision trees
+# install.packages('vip')
+library(vip)# for feature importance
+# install.packages('pdp')
+library(pdp) 
+
+# setting up decision tree
+
+mean_dance = mean(genres$danceability)
+High=ifelse(genres$danceability<=mean_dance,"No","Yes")
+High=as.factor(ifelse(genres$danceability<=mean_dance,"No","Yes"))
+
+genres$High = High
+
+genres_new = genres[, c(-13)]
+library(tree)
+
+genre.tree = tree(High ~ . -danceability, data = genres_new)
+summary(genre.tree)
+plot(genre.tree)
+text(genre.tree,pretty=1, cex = 0.65)
+
+
+set.seed(2)
+train=sample(1:nrow(genres), 1000)
+genre.test=genres[-train,]
+High.test=High[-train]
+test_tree=tree(High~.-danceability,genres,subset=train)
+pred_tree=predict(test_tree,genre.test,type="class")
+table(pred_tree,High.test)
+
+# correct 52.16 % of the time 
+#cv_genres =cv.tree(test_tree,FUN=prune.misclass)
+#names(cv_genres)
+
+# Null logit
+
+glm.fits_n=glm(High~1-danceability,genres,family=binomial,subset=train)
+summary(glm.fits_n)
+
+
+# Logistic Regression using the same variable
+
+glm.fits=glm(High~.-danceability,genres,family=binomial,subset=train)
+summary(glm.fits)
+
+# using first output to make second one 
+
+glm.fits2=glm(High~ speechiness + acousticness + valence + tempo + duration_ms + genre,genres,family=binomial,subset=train)
+summary(glm.fits2)
+
+# test accuracy for first one 
+
+log_mdl <- glm(High ~ speechiness + acousticness + valence + tempo + duration_ms + genre, data = train, family = binomial)
+
+glm.probs=predict(glm.fits,genre.test,type="response")
+contrasts(as.factor(High))
+
+glm.pred=rep("No",1000)
+glm.pred[glm.probs>.5]="Yes"
+table(glm.pred,High.test)
+# logistic gives correct classification 76.55% of the time which is better
+
+# for second Logit 
+
+glm.probs2=predict(glm.fits2,genre.test,type="response")
+contrasts(as.factor(High))
+glm.pred2=rep("No",1000)
+glm.pred2[glm.probs2>.5]="Yes"
+tab1 = table(glm.pred2,High.test)
+round((sum(diag(tab1))/sum(tab1))*100,2)
+# this logistic gives correct classification 73% of the time
+
+
+knitr::kable(tab1,
+             caption = "Error Prediction #2")
+
+
+
+```
+
+
+```{r}
+
+
+# back BIC for logsitic model
+library(MASS)
+step = stepAIC(glm.fits, Trace = T, k = log(nrow(genres)), direction = "backward", scope = formula(glm.fits_n))
+summary(step)
+
+glm.probs_bic=predict(step,genre.test,type="response")
+contrasts(as.factor(High))
+glm.pred_bic=rep("No",1000)
+glm.pred_bic[glm.probs_bic>.5]="Yes"
+table(glm.pred_bic,High.test)
+
+
+
+
+```
